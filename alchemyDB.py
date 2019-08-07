@@ -30,3 +30,17 @@ class Game(Base):
     designer = Column(String)
     # artist =
     # publisher =
+    
+class Game2Mechanic(Base):
+    __tablename__ = 'games_mechanics"
+    game = Column(Game)
+    # game_id not needed? is that made by the mapper?
+    mechanic = Column(Mechanic)
+    
+    
+class Mechanic(Base):
+    __tablename__ = 'mechanics'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    # consider adding aggregate info about games that share this mechanic here
+    
