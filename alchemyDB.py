@@ -11,15 +11,15 @@ class Game(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     description = Column(String)
-    published = Column(int)
-    minplayers = Column(int)
-    maxplayers = Column(int)
-    suggested_numplayers = Column(int) # consider some sort of poll class
-    playingtime = Column(int)
-    minplaytime = Column(int)
-    maxplaytime = Column(int)
-    minage = Column(int)
-    suggested_playerage = Column(int)
+    published = Column(Integer)
+    minplayers = Column(Integer)
+    maxplayers = Column(Integer)
+    suggested_numplayers = Column(Integer) # consider some sort of poll class
+    playingtime = Column(Integer)
+    minplaytime = Column(Integer)
+    maxplaytime = Column(Integer)
+    minage = Column(Integer)
+    suggested_playerage = Column(Integer)
     language_dependence = Column(Boolean) # consider some sort of poll class
 
     ## not sure how to handle these many to many in SQL Alchemy
@@ -30,6 +30,3 @@ class Game(Base):
     designer = Column(String)
     # artist =
     # publisher =
-
-engine = create_engine('sqlite:///games.db')
-Base.metadata.create_all(engine)
