@@ -10,14 +10,14 @@ def strip_values(int_like):
 	try:
 		return int(int_like)
 	except ValueError:
-		return int(re.search(r'\d+',int_like).group())+1
+		return int(re.search(r'\d+', int_like).group())+1
+
 
 def instantiate_games(xml):
-	'''
+	""""
 	:param xml: XML data to parse
-	:param id: game id
 	:return data: Game object
-	'''
+	"""
 	soup = bs(xml.content, 'xml')
 	data = defaultdict(lambda: 'MissingNaN')
 	data['id'] = int(soup.find('item')['id'])
@@ -36,9 +36,9 @@ def instantiate_games(xml):
 		# find the best, recommended, and not recommended player counts
 		if name == 'suggested_numplayers':
 			players = [strip_values(results['numplayers']) for results in poll.find_all('results')]
-			best = [int(vote['numvotes']) for vote in poll.find_all('result',value='Best')]
-			recommended = [int(vote['numvotes']) for vote in poll.find_all('result',value='Recommended')]
-			not_recommended = [int(vote['numvotes']) for vote in poll.find_all('result',value='Not Recommended')]
+			best = [int(vote['numvotes']) for vote in poll.find_all('result', value='Best')]
+			recommended = [int(vote['numvotes']) for vote in poll.find_all('result', value='Recommended')]
+			not_recommended = [int(vote['numvotes']) for vote in poll.find_all('result', value='Not Recommended')]
 
 			data['best']=players[best.index(max(best))]
 			data['recommended']=players[recommended.index(max(recommended))]
@@ -46,7 +46,7 @@ def instantiate_games(xml):
 
 		# find the suggested player age
 		if name == 'suggested_playerage':
-			suggestedage = [(strip_values(vote['value']),int(vote['numvotes'])) for vote in poll.find_all('result')]
+			suggestedage = [(strip_values(vote['value']), int(vote['numvotes'])) for vote in poll.find_all('result')]
 			data['suggestedage'] = max(suggestedage, key = itemgetter(1))[0]
 
 		# find the language skill necessary to play: 1 is low, 5 is high
@@ -58,8 +58,8 @@ def instantiate_games(xml):
 	data['minplaytime'] = int(soup.find('minplaytime')['value'])
 	data['maxplaytime'] = int(soup.find('maxplaytime')['value'])
 	data['minage'] = int(soup.find('minage')['value'])
-	data['designer'] = soup.find('link',type='boardgamedesigner')['value']
-	data['publisher'] = soup.find('link',type='boardgamepublisher')['value']
+	data['designer'] = soup.find('link', type='boardgamedesigner')['value']
+	data['publisher'] = soup.find('link', type='boardgamepublisher')['value']
 
 	# # connect to DB and check for category, mechanic, expansions, implementations, artist
 	# soup.find('link',type='boardgamecategory')['value']
