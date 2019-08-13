@@ -4,7 +4,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import *
 
-
 Base = declarative_base()
 
 class Game(Base):
@@ -17,7 +16,7 @@ class Game(Base):
     published = Column(Integer)
     minplayers = Column(Integer)
     maxplayers = Column(Integer)
-    suggestednumplayers = Column(Integer) # consider some sort of poll class
+    suggestednumplayers = Column(Integer)
     playtime = Column(Integer)
     minplaytime = Column(Integer)
     maxplaytime = Column(Integer)
@@ -29,8 +28,8 @@ class Game(Base):
     mechanics = relationship('Mechanic', secondary='games_mechanics', back_populates='games')
     categories = relationship('Category', secondary='games_categories', back_populates='games')
     artists = relationship('Artist', secondary='games_artists', back_populates='games')
-    implementations = relationship('Game', secondary='games_implementations', back_populates='games')
-    expansions = relationship('Expansion', secondary='games_expansions', back_populates='games')
+    # implementations = relationship('Game', secondary='games_implementations', back_populates='games')
+    # expansions = relationship('Expansion', secondary='games_expansions', back_populates='games')
 
 
 class Mechanic(Base):
@@ -78,3 +77,6 @@ class Game2Artist(Base):
 #     id = Column(Integer, primary_key=True)
 #     name = Column(String)
 #     basegame_id = relationship('Game', ForeignKey('games.id'), back_populates='expansions')
+
+engine = create_engine('sqlite:///boardgames.db')
+Base.metadata.create_all(engine)
