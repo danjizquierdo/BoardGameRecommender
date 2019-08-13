@@ -5,13 +5,10 @@ from collections import defaultdict
 from bs4 import BeautifulSoup as bs
 import re
 from operator import itemgetter
-import requests
-
-test = requests.get('https://boardgamegeek.com/xmlapi2/thing?id=134352&type=boardgame,boardgameexpansion&stats=1')
 
 engine = create_engine('sqlite:///boardgames.db')
 
-Session = sessionmaker(bind=engine)
+Session = sessionmaker(bind=engine, autoflush=False)
 session = Session()
 
 
@@ -44,31 +41,31 @@ def instantiate_artist(artist):
 
 def secondary_objects(data):
 
-    mechanics = data['mechanics']
-    categories = data['categories']
-    artists = data['artists']
-    # pass thru the checking functions and instantiate
+	mechanics = data['mechanics']
+	categories = data['categories']
+	artists = data['artists']
+	# pass thru the checking functions and instantiate
 
-    # checking & instantiating mechanics
-    new_mechanics = list(filter(lambda m: obj_exists(Mechanic, m), mechanics))
-    if new_mechanics != []:
-        mechanics_obj = [instantiate_mechanic(m) for m in new_mechanics]
-    else:
-        mechanics_obj = []
-    # categories
-    new_categories = list(filter(lambda c: obj_exists(Category, c), categories))
-    if new_categories != []:
-        categories_obj = [instantiate_category(c) for c in new_categories]
-    else:
-        categories_obj = []
-    # artists
-    new_artists = list(filter(lambda a: obj_exists(Artist, a), artists))
-    if new_artists != []:
-        artists_obj = [instantiate_artist(a) for a in new_artists]
-    else:
-        artists_obj = []
+	# checking & instantiating mechanics
+	new_mechanics = list(filter(lambda m: obj_exists(Mechanic, m), mechanics))
+	if new_mechanics != []:
+		mechanics_obj = [instantiate_mechanic(m) for m in new_mechanics]
+	else:
+		mechanics_obj = []
+	# categories
+	new_categories = list(filter(lambda c: obj_exists(Category, c), categories))
+	if new_categories != []:
+		categories_obj = [instantiate_category(c) for c in new_categories]
+	else:
+		categories_obj = []
+	# artists
+	new_artists = list(filter(lambda a: obj_exists(Artist, a), artists))
+	if new_artists != []:
+		artists_obj = [instantiate_artist(a) for a in new_artists]
+	else:
+		artists_obj = []
 
-    return {'mechanics': mechanics_obj, 'categories': categories_obj, 'artists': artists_obj}
+	return {'mechanics': mechanics_obj, 'categories': categories_obj, 'artists': artists_obj}
 
 
 # functions to filter all existing secondary objects for names in a list
@@ -150,43 +147,41 @@ def instantiate_games(req):
 	data['publisher'] = soup.find('link', type='boardgamepublisher')['value']
 
 	# # connect to DB and check for category, mechanic, expansions, implementations, artist
-	data['categories'] = [result['value'] for result in soup.find_all('link', type='boardgamecategory')]
-	data['mechanics'] = [result['value'] for result in soup.find_all('link', type='boardgamemechanic')]
-	data['artists'] = [result['value'] for result in soup.find_all('link', type='boardgameartist')]
+	rel = {}
+	rel['categories'] = [result['value'] for result in soup.find_all('link', type='boardgamecategory')]
+	rel['mechanics'] = [result['value'] for result in soup.find_all('link', type='boardgamemechanic')]
+	rel['artists'] = [result['value'] for result in soup.find_all('link', type='boardgameartist')]
 	# soup.find('link',type='boardgameexpansion')['value']
 	# soup.find('link',type='boardgameimplementation')['value']
 
-	new_objects = secondary_objects(data)
+	new_objects = secondary_objects(rel)
 
 	for k, v in new_objects.items():
 		if v != []:
 			session.add_all(v)
 			session.commit()
 
-	game = Game(name=data['name'],
-                description='hi',
-                ratingscount=data['ratingscount'],
-                avgrating=data['avgrating'],
-                published=1999,
-                minplayers=1,
-                maxplayers=10,
-                best=data['best'],
-    			recommended=data['recommended'],
-    			not_recommended=data['not_recommended'],
-                playingtime=60,
-                minplaytime=30,
-                maxplaytime=70,
-                minage=4,
-                suggestedage=15,
-                language_dependence=2,
-                designer='great designer',
-                publisher='best publisher',
-                )
-	game.mechanics = findmechanics(data['mechanics'])
-	game.categories = findcategories(data['categories'])
-	game.artists = findartists(data['artists'])
+	game = Game(**data)
+	game.mechanics = findmechanics(rel['mechanics'])
+	game.categories = findcategories(rel['categories'])
+	game.artists = findartists(rel['artists'])
 
-	return game
+	try:
+		session.add(game)
+		session.commit()
+		return True
+	except:
+		print(f'Something went wrong with game {data["id"]}')
+		session.rollback()
+		return False
+
+
+def rollback():
+	session.rollback()
+
+
+def get_game_collection():
+	return len(session.query(Game).all())
 
 # def game_object(data):
 #     # instantiating secondary objects if they don't yet exist

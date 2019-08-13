@@ -80,5 +80,6 @@ class Game2Artist(Base):
 #     name = Column(String)
 #     basegame_id = relationship('Game', ForeignKey('games.id'), back_populates='expansions')
 
-engine = create_engine('sqlite:///boardgames.db')
-Base.metadata.create_all(engine)
+def make_db():
+    engine = create_engine('sqlite:///boardgames.db')
+    Base.metadata.create_all(engine)
