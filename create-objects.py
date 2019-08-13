@@ -13,6 +13,7 @@ session = Session()
 
 
 # function to get names of all secondary objects
+# to map the strings in game data to objects
 def names(table):
     return [obj.name for obj in session.query(table).all()]
 
@@ -31,29 +32,32 @@ def instantiate_artist(artist):
     return Artist(name=artist)
 
 def secondary_objects(data):
-    relevant_data = None # what keys are relevant?
+
+    mechanics = data['mechanics']
+    categories = data['categories']
+    artists = data['artists']
     # pass thru the checking functions and instantiate
 
     # checking & instantiating mechanics
-    new_mechanics = list(filter(lambda m: obj_exists(Mechanic, m), names(Mechanic)))
+    new_mechanics = list(filter(lambda m: obj_exists(Mechanic, m), mechanics))
     if new_mechanics != []:
-        mechanics = [instantiate_mechanic(m) for m in new_mechanics]
+        mechanics_obj = [instantiate_mechanic(m) for m in new_mechanics]
     else:
-        mechanics = []
+        mechanics_obj = []
     # categories
-    new_categories = list(filter(lambda c: obj_exists(Category, c), names(Category)))
+    new_categories = list(filter(lambda c: obj_exists(Category, c), categories))
     if new_categories != []:
-        categories = [instantiate_category(c) for c in new_categories]
+        categories_obj = [instantiate_category(c) for c in new_categories]
     else:
-        categories = []
+        categories_obj = []
     # artists
-    new_artists = list(filter(lambda a: obj_exists(Artist, a), names(Artist)))
+    new_artists = list(filter(lambda a: obj_exists(Artist, a), artists))
     if new_artists != []:
-        artists = [instantiate_artist(a) for a in new_artists]
+        artists_obj = [instantiate_artist(a) for a in new_artists]
     else:
-        artists = []
+        artists_obj = []
 
-    return {'mechanics': mechanics, 'categories': categories, 'artists': artists}
+    return {'mechanics': mechanics_obj, 'categories': categories_obj, 'artists': artists_obj}
 
 
 # functions to filter all existing secondary objects for names in a list
@@ -84,8 +88,8 @@ def game_object(data):
             session.add_all(v)
             session.commit()
 
-    game = Game(name='test',
-                description='hi',
+    game = Game(name=data['name'],
+                description=data['description'],
                 ratingscount=123,
                 avgrating=3.5,
                 published=1999,
