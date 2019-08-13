@@ -13,18 +13,18 @@ def strip_values(int_like):
 		return int(re.search(r'\d+', int_like).group())+1
 
 
-def instantiate_games(xml):
+def instantiate_games(req):
 	""""
-	:param xml: XML data to parse
+	:param req: XML request to parse
 	:return data: Game object
 	"""
-	soup = bs(xml.content, 'xml')
-	data = defaultdict(lambda: 'MissingNaN')
+	soup = bs(req.content, 'xml')
+	data = defaultdict(lambda: -100) # value it could never be
 	data['id'] = int(soup.find('item')['id'])
 	data['name'] = soup.find('name')['value']
 	data['description'] = soup.find('description').text
-	data['ratingscount'] = soup.find('usersrated')['value']
-	data['avgrating'] = soup.find('bayesaverage')['value']
+	data['ratingscount'] = int(soup.find('usersrated')['value'])
+	data['avgrating'] = int(soup.find('bayesaverage')['value'])
 	data['published'] = int(soup.find('yearpublished')['value'])
 	data['minplayers'] = int(soup.find('minplayers')['value'])
 	data['maxplayers'] = int(soup.find('maxplayers')['value'])
@@ -62,11 +62,11 @@ def instantiate_games(xml):
 	data['publisher'] = soup.find('link', type='boardgamepublisher')['value']
 
 	# # connect to DB and check for category, mechanic, expansions, implementations, artist
-	# soup.find('link',type='boardgamecategory')['value']
-	# soup.find('link',type='boardgamemechanic')['value']
+	data['categories'] = [result['value'] for result in soup.find_all('link',type='boardgamecategory')]
+	data['mechanics'] = [result['value'] for result in soup.find_all('link',type='boardgamemechanic')]
 	# soup.find('link',type='boardgameexpansion')['value']
 	# soup.find('link',type='boardgameimplementation')['value']
-	# soup.find('link',type='boardgameartist')['value']
+	data['artists'] = [result['value'] for result in soup.find_all('link',type='boardgameartist')]
 
 	# game = Game(data) ?
 
