@@ -17,7 +17,9 @@ class Game(Base):
     published = Column(Integer)
     minplayers = Column(Integer)
     maxplayers = Column(Integer)
-    suggestednumplayers = Column(Integer) # consider some sort of poll class
+    best = Column(Integer)
+    recommended = Column(Integer)
+    not_recommended = Column(Integer)
     playtime = Column(Integer)
     minplaytime = Column(Integer)
     maxplaytime = Column(Integer)
