@@ -19,7 +19,7 @@ class Game(Base):
     best = Column(Integer)
     recommended = Column(Integer)
     not_recommended = Column(Integer)
-    playtime = Column(Integer)
+    playingtime = Column(Integer)
     minplaytime = Column(Integer)
     maxplaytime = Column(Integer)
     minage = Column(Integer)

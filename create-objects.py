@@ -5,6 +5,9 @@ from collections import defaultdict
 from bs4 import BeautifulSoup as bs
 import re
 from operator import itemgetter
+import requests
+
+test = requests.get('https://boardgamegeek.com/xmlapi2/thing?id=134352&type=boardgame,boardgameexpansion&stats=1')
 
 engine = create_engine('sqlite:///boardgames.db')
 
@@ -109,7 +112,7 @@ def instantiate_games(req):
 	data['name'] = soup.find('name')['value']
 	data['description'] = soup.find('description').text
 	data['ratingscount'] = int(soup.find('usersrated')['value'])
-	data['avgrating'] = int(soup.find('bayesaverage')['value'])
+	data['avgrating'] = float(soup.find('bayesaverage')['value'])
 	data['published'] = int(soup.find('yearpublished')['value'])
 	data['minplayers'] = int(soup.find('minplayers')['value'])
 	data['maxplayers'] = int(soup.find('maxplayers')['value'])
@@ -153,14 +156,32 @@ def instantiate_games(req):
 	# soup.find('link',type='boardgameexpansion')['value']
 	# soup.find('link',type='boardgameimplementation')['value']
 
-
 	new_objects = secondary_objects(data)
-	for k, v in new_objects:
+
+	for k, v in new_objects.items():
 		if v != []:
 			session.add_all(v)
 			session.commit()
 
-	game = Game(**data)
+	game = Game(name=data['name'],
+                description='hi',
+                ratingscount=data['ratingscount'],
+                avgrating=data['avgrating'],
+                published=1999,
+                minplayers=1,
+                maxplayers=10,
+                best=data['best'],
+    			recommended=data['recommended'],
+    			not_recommended=data['not_recommended'],
+                playingtime=60,
+                minplaytime=30,
+                maxplaytime=70,
+                minage=4,
+                suggestedage=15,
+                language_dependence=2,
+                designer='great designer',
+                publisher='best publisher',
+                )
 	game.mechanics = findmechanics(data['mechanics'])
 	game.categories = findcategories(data['categories'])
 	game.artists = findartists(data['artists'])
@@ -174,24 +195,6 @@ def instantiate_games(req):
 #         if v != []:
 #             session.add_all(v)
 #             session.commit()
-#
-#     game = Game(name='test',
-#                 description='hi',
-#                 ratingscount=123,
-#                 avgrating=3.5,
-#                 published=1999,
-#                 minplayers=1,
-#                 maxplayers=10,
-#                 suggestednumplayers=6,
-#                 playtime=60,
-#                 minplaytime=30,
-#                 maxplaytime=70,
-#                 minage=4,
-#                 suggestedage=15,
-#                 language_dependensce=2,
-#                 designer='great designer',
-#                 publisher='best publisher',
-#                 )
 #
 #     game.mechanics = findmechanics(data['mechanics'])
 #     game.categories = findcategories(data['categories'])
