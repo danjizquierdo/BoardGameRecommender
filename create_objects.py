@@ -1,15 +1,18 @@
 from alchemyDB import *
+import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from collections import defaultdict
 from bs4 import BeautifulSoup as bs
 import re
 from operator import itemgetter
+import logging
 
 engine = create_engine('sqlite:///boardgames.db')
 
-Session = sessionmaker(bind=engine, autoflush=False)
+Session = sessionmaker(bind=engine, autoflush=True)
 session = Session()
+logging.basicConfig(filename='scrape.log', format='%(asctime)s - %(message)s')
 
 
 # how does the data for each game look?
@@ -23,7 +26,7 @@ def names(table):
 
 # function to check if a secondary object exists
 def obj_exists(table, name):
-	return name not in names(table)  # boolean
+	return name in names(table)  # boolean
 
 
 # instantiating the three secondary objects
@@ -97,8 +100,27 @@ def strip_values(int_like):
 	except ValueError:
 		return int(re.search(r'\d+', int_like).group()) + 1
 
+def safe_run(func):
 
-def instantiate_games(req):
+    def func_wrapper(*args, **kwargs):
+
+        try:
+           return func(*args, **kwargs)
+
+        except TypeError:
+            logging.error('Scrape returned empty value')
+            return '-100'
+
+    return func_wrapper
+
+@safe_run
+def strain_soup(soup, column, need_type=False):
+	if need_type:
+		return soup.find('link', type=need_type)['value']
+	else:
+		return soup.find(column)['value']
+
+def instantiate_games(req, num):
 	""""
 	:param req: XML request to parse
 	:return data: Game object
@@ -106,52 +128,59 @@ def instantiate_games(req):
 	soup = bs(req.content, 'xml')
 	data = defaultdict(lambda: -100)  # value it could never be
 	data['id'] = int(soup.find('item')['id'])
-	data['name'] = soup.find('name')['value']
+	data['name'] = strain_soup(soup, 'name')
 	data['description'] = soup.find('description').text
-	data['ratingscount'] = int(soup.find('usersrated')['value'])
-	data['avgrating'] = float(soup.find('bayesaverage')['value'])
-	data['published'] = int(soup.find('yearpublished')['value'])
-	data['minplayers'] = int(soup.find('minplayers')['value'])
-	data['maxplayers'] = int(soup.find('maxplayers')['value'])
+	data['ratingscount'] = int(strain_soup(soup, 'usersrated'))
+	data['avgrating'] = float(strain_soup(soup, 'bayesaverage'))
+	data['published'] = int(strain_soup(soup, 'yearpublished'))
+	data['minplayers'] = int(strain_soup(soup, 'minplayers'))
+	data['maxplayers'] = int(strain_soup(soup, 'maxplayers'))
 
 	# Loop through polls and save max values
 	for poll in soup.find_all('poll'):
-		name = poll['name']
+		if int(poll['totalvotes']):
+			name = poll['name']
 
-		# find the best, recommended, and not recommended player counts
-		if name == 'suggested_numplayers':
-			players = [strip_values(results['numplayers']) for results in poll.find_all('results')]
-			best = [int(vote['numvotes']) for vote in poll.find_all('result', value='Best')]
-			recommended = [int(vote['numvotes']) for vote in poll.find_all('result', value='Recommended')]
-			not_recommended = [int(vote['numvotes']) for vote in poll.find_all('result', value='Not Recommended')]
+			# find the best, recommended, and not recommended player counts
+			if name == 'suggested_numplayers':
+				players = [strip_values(results['numplayers']) for results in poll.find_all('results')]
+				best = [int(vote['numvotes']) for vote in poll.find_all('result', value='Best')]
+				recommended = [int(vote['numvotes']) for vote in poll.find_all('result', value='Recommended')]
+				not_recommended = [int(vote['numvotes']) for vote in poll.find_all('result', value='Not Recommended')]
 
-			data['best'] = players[best.index(max(best))]
-			data['recommended'] = players[recommended.index(max(recommended))]
-			data['not_recommended'] = players[not_recommended.index(max(not_recommended))]
+				if len(best)>0:
+					data['best'] = players[best.index(max(best))]
+				if len(recommended)>0:
+					data['recommended'] = players[recommended.index(max(recommended))]
+				if len(not_recommended)>0:
+					data['not_recommended'] = players[not_recommended.index(max(not_recommended))]
 
-		# find the suggested player age
-		if name == 'suggested_playerage':
-			suggestedage = [(strip_values(vote['value']), int(vote['numvotes'])) for vote in poll.find_all('result')]
-			data['suggestedage'] = max(suggestedage, key=itemgetter(1))[0]
+			# find the suggested player age
+			if name == 'suggested_playerage':
+				suggestedage = [(strip_values(vote['value']), int(vote['numvotes'])) for vote in poll.find_all('result')]
+				# if len(suggestedage)>0:
+				data['suggestedage'] = max(suggestedage, key=itemgetter(1))[0]
 
-		# find the language skill necessary to play: 1 is low, 5 is high
-		if name == 'language_dependence':
-			language_dependence = [(int(vote['level']), int(vote['numvotes'])) for vote in poll.find_all('result')]
-			data['language_dependence'] = max(language_dependence, key=itemgetter(1))[0]
+			# find the language skill necessary to play: 1 is low, 5 is high
+			if name == 'language_dependence':
+				language_dependence = [(int(vote['level']), int(vote['numvotes'])) for vote in poll.find_all('result')]
+				# if len(language_dependence)>0:
+				data['language_dependence'] = max(language_dependence, key=itemgetter(1))[0]
 
-	data['playingtime'] = int(soup.find('playingtime')['value'])
-	data['minplaytime'] = int(soup.find('minplaytime')['value'])
-	data['maxplaytime'] = int(soup.find('maxplaytime')['value'])
-	data['minage'] = int(soup.find('minage')['value'])
-	data['designer'] = soup.find('link', type='boardgamedesigner')['value']
-	data['publisher'] = soup.find('link', type='boardgamepublisher')['value']
+
+	data['playingtime'] = int(strain_soup(soup, 'playingtime'))
+	data['minplaytime'] = int(strain_soup(soup, 'minplaytime'))
+	data['maxplaytime'] = int(strain_soup(soup, 'maxplaytime'))
+	data['minage'] = int(strain_soup(soup, 'minage'))
+	data['designer'] = strain_soup(soup, 'boardgamedesigner')
+	data['publisher'] = strain_soup(soup, 'boardgamepublisher')
 
 	# # connect to DB and check for category, mechanic, expansions, implementations, artist
-	rel = {}
+	rel = dict()
 	rel['categories'] = [result['value'] for result in soup.find_all('link', type='boardgamecategory')]
 	rel['mechanics'] = [result['value'] for result in soup.find_all('link', type='boardgamemechanic')]
 	rel['artists'] = [result['value'] for result in soup.find_all('link', type='boardgameartist')]
-	# soup.find('link',type='boardgameexpansion')['value']
+	expansions = [int(result['id']) for result in soup.find_all('link',type='boardgameexpansion')]
 	# soup.find('link',type='boardgameimplementation')['value']
 
 	new_objects = secondary_objects(rel)
@@ -161,19 +190,29 @@ def instantiate_games(req):
 			session.add_all(v)
 			session.commit()
 
-	game = Game(**data)
-	game.mechanics = findmechanics(rel['mechanics'])
-	game.categories = findcategories(rel['categories'])
-	game.artists = findartists(rel['artists'])
-
 	try:
+		game = Game(**data)
+		game.mechanics = findmechanics(rel['mechanics'])
+		game.categories = findcategories(rel['categories'])
+		game.artists = findartists(rel['artists'])
 		session.add(game)
 		session.commit()
-		return True
-	except:
-		print(f'Something went wrong with game {data["id"]}')
+	except sqlalchemy.exc.InvalidRequestError:
 		session.rollback()
-		return False
+		logging.error(f'InvalidRequestError: {num}')
+		errors.append(i)
+	except sqlalchemy.exc.IntegrityError:
+		session.rollback()
+		logging.error(f'IntegrityError: {num}')
+	except TypeError:
+		session.rollback()
+		logging.error(f'TypeError: {num}')
+		errors.append(i)
+	# except:
+	# 	print(f'Something went wrong with game {data["id"]}')
+	# 	session.rollback()
+	# 	return False
+	return expansions
 
 
 def rollback():
