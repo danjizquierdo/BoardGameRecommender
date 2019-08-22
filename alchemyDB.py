@@ -27,6 +27,7 @@ class Game(Base):
     language_dependence = Column(Integer)
     designer = Column(String)
     publisher = Column(String)
+    image = Column(String)
     mechanics = relationship('Mechanic', secondary='games_mechanics', back_populates='games')
     categories = relationship('Category', secondary='games_categories', back_populates='games')
     artists = relationship('Artist', secondary='games_artists', back_populates='games')
@@ -80,6 +81,9 @@ class Game2Artist(Base):
 #     name = Column(String)
 #     basegame_id = relationship('Game', ForeignKey('games.id'), back_populates='expansions')
 
+engine = create_engine('sqlite:///test.db')
+Base.metadata.create_all(engine)
+
 def make_db():
-    engine = create_engine('sqlite:///boardgames.db')
+    engine = create_engine('sqlite:///boardgamez.db')
     Base.metadata.create_all(engine)
