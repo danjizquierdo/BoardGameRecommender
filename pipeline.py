@@ -41,8 +41,8 @@ def dropcols(df):
     to_drop = ['id', 'name', 'description', 'avgrating']
     return df.drop(to_drop, axis=1)
 
-def get_test_array(ids):
-    inputs = dropcols(processed[processed['id'].isin(ids)])
+def get_test_array(names):
+    inputs = dropcols(processed[processed['name'].isin(names)])
     return inputs.mean().values.reshape(1, -1)
 
 def get_nearest(ids, n=5):
@@ -51,8 +51,8 @@ def get_nearest(ids, n=5):
     results = nearest.tolist()[0]
     return results
 
-def get_json(ids, n):
-    results = get_nearest(ids)
+def get_json_by_name(ids, n=5):
+    results = get_nearest(ids, n)
     return list(filter(lambda g: g['id'] in results and g['id'] not in ids, game_json))
 
 # to get results as a json, just run get_json(LIST_OF_IDS, NUMBER OF RESULTS)
