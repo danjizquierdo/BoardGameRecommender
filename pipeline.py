@@ -7,17 +7,18 @@ import json
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.neighbors import NearestNeighbors
 
+# Load data
 eng = create_engine('sqlite:///data/boardgames.db', echo=False)
-
 nn = pickle.load(open('0827test.p', 'rb'))
-
 raw = pd.read_sql_query("SELECT * FROM boardgames", eng).drop(['index', 'designer', 'publisher'], axis=1)
 
+# Open game data
 with open('data/boardgames.json') as f:
     game_json = json.load(f)
 
-def preprocess(df):
 
+def preprocess(df):
+    # Perform scaling and grab relevant features
     relevant = ['id', 'name', 'ratingscount', 'avgrating', 'published',
        'minplayers', 'maxplayers', 'best', 'recommended', 'not_recommended',
        'playingtime', 'minplaytime', 'maxplaytime', 'minage', 'suggestedage',
@@ -35,24 +36,36 @@ def preprocess(df):
 
     return df
 
+# Store processed data for faster retrieval
 processed = preprocess(raw)
 
 def dropcols(df):
+    # Return only relevant features for KNN
     to_drop = ['id', 'name', 'description', 'avgrating']
     return df.drop(to_drop, axis=1)
 
 def get_test_array(names):
+    # Aggregate data for list of names to seed recommendation
     inputs = dropcols(processed[processed['name'].isin(names)])
     return inputs.mean().values.reshape(1, -1)
 
-def get_nearest(ids, n=5):
-    input_array = get_test_array(ids)
-    nearest = nn.kneighbors(input_array, n)[-1]
-    results = nearest.tolist()[0]
-    return results
+def get_nearest(names, n=10):
+    # Grab info for given games
+    input_array = get_test_array(names)
+    # Find the nearest neighbors
+    dists, neighbors = nn.kneighbors(input_array, n+len(names))
+    dists = dists.tolist()[0]
+    neighbors = neighbors.tolist()[0]
+    # Scale distances by inverse of avgrating
+    weights = processed.query('id == @neighbors').avgrating
+    dists = [dist/(weight+1) for dist, weight in zip(dists, weights)]
+    # Sort results by new scaled distance
+    dists, neighbors = (list(tup) for tup in zip(*sorted(zip(dists, neighbors))))
+    # Return results not in the given names
+    return list(filter(lambda g: g['id'] in neighbors and g['name'] not in names, game_json))[:5]
 
-def get_json_by_name(ids, n=5):
-    results = get_nearest(ids, n)
-    return list(filter(lambda g: g['id'] in results and g['id'] not in ids, game_json))
+# def get_json_by_name(ids, n=10):
+#     results = get_nearest(ids, n)
+#     return list(filter(lambda g: g['id'] in results and g['id'] not in ids, game_json))
 
-# to get results as a json, just run get_json(LIST_OF_IDS, NUMBER OF RESULTS)
+# to get results as a json, just run get_nearest(LIST_OF_MAMES, NUMBER OF RESULTS)
