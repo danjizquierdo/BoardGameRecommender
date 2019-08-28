@@ -32,13 +32,13 @@ def find_games():
         mechanics = input['mechanics'].split(',')
         logging.info(f'Successful request: /n Games: {games} /n Mechanics: {mechanics}')
     except:
-        logging.error(f'Bad request:{request.url_root}')
+        logging.error(f'Bad request: {request.url_root}')
         abort(400)
 
     # Perform recommendation
     data = get_nearest(games,input['mechanics'])
     logging.info(f'Results: {[datum["name"] for datum in data]}')
-    logging.info(f'Returned: {data}')
+    logging.info(f'Returned: {"/n".join([datum for datum in data])}')
 
     return {'games': data}
 
