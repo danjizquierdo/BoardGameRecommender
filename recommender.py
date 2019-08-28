@@ -21,24 +21,25 @@ CORS(app)
 
 @app.route('/rec', methods=['POST'])
 def find_games():
-    # Parameter required: game names
-    input['games'] = request.args.get('games')
-    input['mechanics'] = request.args.get('mechanics')
     try:
+        # Parameter options: game names or mechanic names
+        params=dict()
+        params['games'] = request.args.get('games')
+        params['mechanics'] = request.args.get('mechanics')
         # Split request into list of strings
-        games = input['games'].split(',')
-        logging.info(f'Successful request:{games}')
+        games = params['games'].split(',') if params['games'] else []
         # Split request into list of strings
-        mechanics = input['mechanics'].split(',')
-        logging.info(f'Successful request: /n Games: {games} /n Mechanics: {mechanics}')
+        mechanics = params['mechanics'].split(',') if params['mechanics'] else []
+        logging.info(f'Successful request: \n Games: {games if games else "None"} \n Mechanics: {mechanics if mechanics else "None"}')
     except:
-        logging.error(f'Bad request:{request.url_root}')
+        logging.error(f'Bad request: {request}')
         abort(400)
 
     # Perform recommendation
-    data = get_nearest(games,input['mechanics'])
+    data = get_nearest(games,mechanics)
     logging.info(f'Results: {[datum["name"] for datum in data]}')
-    logging.info(f'Returned: {data}')
+    line = '\n'
+    logging.info(f'Returned: {line}{line.join([str(datum)+line for datum in data])}')
 
     return {'games': data}
 
