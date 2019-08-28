@@ -23,7 +23,6 @@ CORS(app)
 def find_games():
     try:
         # Parameter options: game names or mechanic names
-        breakpoint()
         params=dict()
         params['games'] = request.args.get('games')
         params['mechanics'] = request.args.get('mechanics')
