@@ -49,7 +49,7 @@ def get_test_array(names):
     inputs = dropcols(processed[processed['name'].isin(names)])
     return inputs.mean().values.reshape(1, -1)
 
-def get_nearest(names, n=10):
+def get_nearest(names, mechanics, n=10):
     # Grab info for given games
     input_array = get_test_array(names)
     # Find the nearest neighbors
