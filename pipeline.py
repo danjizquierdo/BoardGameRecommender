@@ -13,7 +13,7 @@ nn = pickle.load(open('0827test.p', 'rb'))
 raw = pd.read_sql_query("SELECT * FROM boardgames", eng).drop(['index', 'designer', 'publisher'], axis=1)
 
 # Open game data
-with open('data.json') as f:
+with open('boardgames.json') as f:
     game_json = json.load(f)
 
 
@@ -62,10 +62,28 @@ def get_nearest(names, mechanics, n=10):
     # Sort results by new scaled distance
     dists, neighbors = (list(tup) for tup in zip(*sorted(zip(dists, neighbors))))
     # Return results not in the given names
-    return list(filter(lambda g: g['id'] in neighbors and g['name'] not in names, game_json))[:5]
+    return list(filter(lambda g: g['bggid'] in neighbors and g['name'] not in names, game_json))[:5]
 
 # def get_json_by_name(ids, n=10):
 #     results = get_nearest(ids, n)
 #     return list(filter(lambda g: g['id'] in results and g['id'] not in ids, game_json))
 
 # to get results as a json, just run get_nearest(LIST_OF_MAMES, NUMBER OF RESULTS)
+
+
+cols = dropcols(processed).columns.tolist()
+
+def featurecloseness(inputs, output):
+    # takes in the names of inputs and also results!
+    
+    invalues = dict(zip(cols, get_test_array(inputs)[0]))
+    relevantvals = {k: v for k, v in invalues.items() if v != 0}
+    
+    output = dropcols(processed[processed['name'] == output]).values.reshape(1, -1)
+    
+    outvalues = dict(zip(cols, output[0]))
+    outrelevant = {k: outvalues[k] for k in relevantvals.keys()}
+    diffdict = {k: abs(outrelevant[k] - relevantvals[k]) for k in relevantvals.keys()}
+    
+    return {'features': [r[0] for r in sorted(diffdict.items(), key=lambda kv: kv[1])[:3]]}
+
