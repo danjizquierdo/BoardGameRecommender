@@ -50,7 +50,9 @@ def get_test_array(names):
     return inputs.mean().values.reshape(1, -1)
 
 def filter_mechanics(mechanics, df = processed):
+    ids = []
     for mechanic in mechanics:
+        ids.append(df[df[mechanic]==1])
         df = df.query(mechanic+'==1')
     return df['id'].values.tolist()
 
@@ -68,18 +70,18 @@ def get_nearest(names, mechanics, n=20):
         if mechanics:
             # Prefer games with matching mechanics
             mech_games = filter_mechanics(mechanics)
-            weights.apply(lambda x: x['avgrating']*10 if x['id'] in mech_games else x['avgrating'],axis=1)
+            weights['avgrating'] = weights.apply(lambda x: x['avgrating']*10 if x['id'] in mech_games else x['avgrating'], axis=1)
         # Sort results by new scaled distance
-        neighborhood['distance']= pd.merge(neighborhood,weights,on='id').apply(lambda x: x['distance']/(x['avgrating']+.01),axis=1)
-        neighborhood.sort_values('distance',inplace=True)
+        neighborhood['distance']= pd.merge(neighborhood, weights,on='id').apply(lambda x: x['distance']/(x['avgrating']+.01),axis=1)
+        neighborhood.sort_values('distance', inplace=True)
         # Return results not in the given names
-        return list(filter(lambda g: g['name'] not in names, [game_json[int(game_id)] for game_id in list(neighborhood['id'])]))[:5]
+        return list(filter(lambda g: g['name'] not in names, [game_json[int(game_id)] for game_id in list(neighborhood['id'])]))[:3]
     elif mechanics:
         # Filters games based on given mechanics
         mech_games = filter_mechanics(mechanics)
         # Finds top 3 rated games with those mechanics
         best_mech = processed.query('id == @mech_games').sort_values('avgrating', ascending=False)['id'].head(3).values
-        return list(filter(lambda g: g['bggid'] in best_mech, game_json))
+        return list(filter(lambda g: g['bggid'] in best_mech, game_json)).sort(key=lambda g: g['avgrating'], reverse=True)
 
 cols = dropcols(processed).columns.tolist()
 
