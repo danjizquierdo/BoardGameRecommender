@@ -49,6 +49,22 @@ def get_test_array(names):
     inputs = dropcols(processed[processed['name'].isin(names)])
     return inputs.mean().values.reshape(1, -1)
 
+cols = dropcols(processed).columns.tolist()
+
+def featurecloseness(inputs, output):
+    # takes in the names of inputs and also results!
+    
+    invalues = dict(zip(cols, get_test_array(inputs)[0]))
+    relevantvals = {k: v for k, v in invalues.items() if v != 0}
+    
+    output = dropcols(processed[processed['name'] == output]).values.reshape(1, -1)
+    
+    outvalues = dict(zip(cols, output[0]))
+    outrelevant = {k: outvalues[k] for k in relevantvals.keys()}
+    diffdict = {k: abs(outrelevant[k] - relevantvals[k]) for k in relevantvals.keys()}
+    
+    return [r[0] for r in sorted(diffdict.items(), key=lambda kv: kv[1])[:3]]
+
 def get_nearest(names, mechanics, n=10):
     # Grab info for given games
     input_array = get_test_array(names)
@@ -71,19 +87,5 @@ def get_nearest(names, mechanics, n=10):
 # to get results as a json, just run get_nearest(LIST_OF_MAMES, NUMBER OF RESULTS)
 
 
-cols = dropcols(processed).columns.tolist()
 
-def featurecloseness(inputs, output):
-    # takes in the names of inputs and also results!
-    
-    invalues = dict(zip(cols, get_test_array(inputs)[0]))
-    relevantvals = {k: v for k, v in invalues.items() if v != 0}
-    
-    output = dropcols(processed[processed['name'] == output]).values.reshape(1, -1)
-    
-    outvalues = dict(zip(cols, output[0]))
-    outrelevant = {k: outvalues[k] for k in relevantvals.keys()}
-    diffdict = {k: abs(outrelevant[k] - relevantvals[k]) for k in relevantvals.keys()}
-    
-    return {'features': [r[0] for r in sorted(diffdict.items(), key=lambda kv: kv[1])[:3]]}
 
