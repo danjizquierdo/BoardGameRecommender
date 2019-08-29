@@ -56,6 +56,23 @@ def filter_mechanics(mechanics, df = processed):
         df = df.query(mechanic+'==1')
     return df['id'].values.tolist()
 
+cols = dropcols(processed).columns.tolist()
+
+def featurecloseness(inputs, output):
+    # takes in the names of inputs and also results!
+    
+    invalues = dict(zip(cols, get_test_array(inputs)[0]))
+    relevantvals = {k: v for k, v in invalues.items() if v != 0}
+    
+    output = dropcols(processed[processed['name'] == output]).values.reshape(1, -1)
+    
+    outvalues = dict(zip(cols, output[0]))
+    outrelevant = {k: outvalues[k] for k in relevantvals.keys()}
+    diffdict = {k: abs(outrelevant[k] - relevantvals[k]) for k in relevantvals.keys()}
+    
+    return [r[0] for r in sorted(diffdict.items(), key=lambda kv: kv[1])[:3]]
+
+
 def get_nearest(names, mechanics, n=20):
     # Grab info for given games
     if names:
@@ -81,20 +98,12 @@ def get_nearest(names, mechanics, n=20):
         mech_games = filter_mechanics(mechanics)
         # Finds top 3 rated games with those mechanics
         best_mech = processed.query('id == @mech_games').sort_values('avgrating', ascending=False)['id'].head(3).values
-        return list(filter(lambda g: g['bggid'] in best_mech, game_json)).sort(key=lambda g: g['avgrating'], reverse=True)
+        
+        results = list(filter(lambda g: g['bggid'] in best_mech, game_json)).sort(key=lambda g: g['avgrating'], reverse=True)
+        
+        for r in results:
+            r['bestfeatures'] = featurecloseness(names, r)
+        
+        return results
 
-cols = dropcols(processed).columns.tolist()
 
-def featurecloseness(inputs, output):
-    # takes in the names of inputs and also results!
-    
-    invalues = dict(zip(cols, get_test_array(inputs)[0]))
-    relevantvals = {k: v for k, v in invalues.items() if v != 0}
-    
-    output = dropcols(processed[processed['name'] == output]).values.reshape(1, -1)
-    
-    outvalues = dict(zip(cols, output[0]))
-    outrelevant = {k: outvalues[k] for k in relevantvals.keys()}
-    diffdict = {k: abs(outrelevant[k] - relevantvals[k]) for k in relevantvals.keys()}
-    
-    return [r[0] for r in sorted(diffdict.items(), key=lambda kv: kv[1])[:3]]
