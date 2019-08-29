@@ -49,6 +49,11 @@ def get_test_array(names):
     inputs = dropcols(processed[processed['name'].isin(names)])
     return inputs.mean().values.reshape(1, -1)
 
+def filter_mechanics(mechanics, df = processed):
+    for mechanic in mechanics:
+        df = df.query(mechanic+'==1')
+    return df['id'].values.tolist()
+
 def get_nearest(names, mechanics, n=20):
     # Grab info for given games
     if names:
