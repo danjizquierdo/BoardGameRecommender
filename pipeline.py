@@ -13,7 +13,7 @@ nn = pickle.load(open('0827test.p', 'rb'))
 raw = pd.read_sql_query("SELECT * FROM boardgames", eng).drop(['index', 'designer', 'publisher'], axis=1)
 
 # Open game data
-with open('data.json') as f:
+with open('boardgames.json') as f:
     game_json = json.load(f)
 
 
@@ -74,4 +74,20 @@ def get_nearest(names, mechanics, n=20):
         mech_games = filter_mechanics(mechanics)
         # Finds top 3 rated games with those mechanics
         best_mech = processed.query('id == @mech_games').sort_values('avgrating', ascending=False)['id'].head(3).values
-        return list(filter(lambda g: g['id'] in best_mech, game_json))
+        return list(filter(lambda g: g['bggid'] in best_mech, game_json))
+
+cols = dropcols(processed).columns.tolist()
+
+def featurecloseness(inputs, output):
+    # takes in the names of inputs and also results!
+    
+    invalues = dict(zip(cols, get_test_array(inputs)[0]))
+    relevantvals = {k: v for k, v in invalues.items() if v != 0}
+    
+    output = dropcols(processed[processed['name'] == output]).values.reshape(1, -1)
+    
+    outvalues = dict(zip(cols, output[0]))
+    outrelevant = {k: outvalues[k] for k in relevantvals.keys()}
+    diffdict = {k: abs(outrelevant[k] - relevantvals[k]) for k in relevantvals.keys()}
+    
+    return [r[0] for r in sorted(diffdict.items(), key=lambda kv: kv[1])[:3]]
