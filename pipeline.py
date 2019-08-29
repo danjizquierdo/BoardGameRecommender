@@ -13,7 +13,7 @@ nn = pickle.load(open('0827test.p', 'rb'))
 raw = pd.read_sql_query("SELECT * FROM boardgames", eng).drop(['index', 'designer', 'publisher'], axis=1)
 
 # Open game data
-with open('data/boardgames.json') as f:
+with open('data.json') as f:
     game_json = json.load(f)
 
 
