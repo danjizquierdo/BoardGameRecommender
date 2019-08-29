@@ -24,8 +24,8 @@ def preprocess(df):
        'playingtime', 'minplaytime', 'maxplaytime', 'minage', 'suggestedage',
        'language_dependence']
 
-    outliers = ['published','avgrating','best','maxplayers','maxplaytime','minplaytime','not_recommended','playingtime','ratingscount','recommended']
-    normal = ['language_dependence','minage','minplayers','suggestedage']
+    outliers = ['published','best','maxplayers','maxplaytime','minplaytime','not_recommended','playingtime','ratingscount','recommended']
+    normal = ['language_dependence','minage','minplayers','suggestedage','avgrating']
 
     df[relevant] = df[relevant].apply(lambda x: x.fillna(x.median()) if x.dtype != np.dtype('O') else x,axis=0)
 
@@ -49,23 +49,29 @@ def get_test_array(names):
     inputs = dropcols(processed[processed['name'].isin(names)])
     return inputs.mean().values.reshape(1, -1)
 
-def get_nearest(names, mechanics, n=10):
+def get_nearest(names, mechanics, n=20):
     # Grab info for given games
-    input_array = get_test_array(names)
-    # Find the nearest neighbors
-    dists, neighbors = nn.kneighbors(input_array, n+len(names))
-    dists = dists.tolist()[0]
-    neighbors = neighbors.tolist()[0]
-    # Scale distances by inverse of avgrating
-    weights = processed.query('id == @neighbors').avgrating
-    dists = [dist/(weight+1) for dist, weight in zip(dists, weights)]
-    # Sort results by new scaled distance
-    dists, neighbors = (list(tup) for tup in zip(*sorted(zip(dists, neighbors))))
-    # Return results not in the given names
-    return list(filter(lambda g: g['id'] in neighbors and g['name'] not in names, game_json))[:5]
-
-# def get_json_by_name(ids, n=10):
-#     results = get_nearest(ids, n)
-#     return list(filter(lambda g: g['id'] in results and g['id'] not in ids, game_json))
-
-# to get results as a json, just run get_nearest(LIST_OF_MAMES, NUMBER OF RESULTS)
+    if names:
+        input_array = get_test_array(names)
+        # Find the nearest neighbors
+        dists, neighbors = nn.kneighbors(input_array, n+len(names))
+        dists = dists.tolist()[0]
+        neighbors = neighbors.tolist()[0]
+        neighborhood = pd.DataFrame(np.array([dists,neighbors]).T,columns=['distance','id'])
+        # Scale distances by inverse of avgrating
+        weights = processed.query('id == @neighbors')[['id','avgrating']]
+        if mechanics:
+            # Prefer games with matching mechanics
+            mech_games = filter_mechanics(mechanics)
+            weights.apply(lambda x: x['avgrating']*10 if x['id'] in mech_games else x['avgrating'],axis=1)
+        # Sort results by new scaled distance
+        neighborhood['distance']= pd.merge(neighborhood,weights,on='id').apply(lambda x: x['distance']/(x['avgrating']+.01),axis=1)
+        neighborhood.sort_values('distance',inplace=True)
+        # Return results not in the given names
+        return list(filter(lambda g: g['name'] not in names, [game_json[int(game_id)] for game_id in list(neighborhood['id'])]))[:5]
+    elif mechanics:
+        # Filters games based on given mechanics
+        mech_games = filter_mechanics(mechanics)
+        # Finds top 3 rated games with those mechanics
+        best_mech = processed.query('id == @mech_games').sort_values('avgrating', ascending=False)['id'].head(3).values
+        return list(filter(lambda g: g['id'] in best_mech, game_json))
