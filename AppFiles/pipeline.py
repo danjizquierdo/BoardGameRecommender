@@ -127,11 +127,12 @@ def get_nearest(names, mechanics, n=100):
             best_mech = processed.sort_values('avgrating',ascending=False)['id'].head(3).values
         results = sorted(list(filter(lambda g: g['bggid'] in best_mech.tolist(), game_json)),
                          key=lambda g: g['avgrating'], reverse=True)
-        
     return results[:3]
 
 
 if __name__ == "__main__":
+    # If run as a script, create a NearestNeighbors model with the passed in BG data and save.
     nn = store_mvp(raw)
 else:
-    nn = pickle.load(open('0827test.p', 'rb'))
+    # Otherwise load up pre-existing model
+    nn = pickle.load(open('BGGuru.p', 'rb'))
