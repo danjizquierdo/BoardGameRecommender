@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import json
-
+from operator import itemgetter
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.neighbors import NearestNeighbors
 
@@ -52,9 +52,8 @@ def get_test_array(names):
 def filter_mechanics(mechanics, df = processed):
     ids = []
     for mechanic in mechanics:
-        ids.append(df[df[mechanic]==1])
-        df = df.query(mechanic+'==1')
-    return df['id'].values.tolist()
+        ids.extend(df[df[mechanic] == 1].id.values.tolist())
+    return ids
 
 cols = dropcols(processed).columns.tolist()
 
@@ -65,15 +64,15 @@ def featurecloseness(inputs, output):
     relevantvals = {k: v for k, v in invalues.items() if v != 0}
     
     output = dropcols(processed[processed['name'] == output]).values.reshape(1, -1)
-    
     outvalues = dict(zip(cols, output[0]))
     outrelevant = {k: outvalues[k] for k in relevantvals.keys()}
-    diffdict = {k: abs(outrelevant[k] - relevantvals[k]) for k in relevantvals.keys()}
+    diffdict = {k: abs(outrelevant[k] - relevantvals[k])/relevantvals[k] for k in relevantvals.keys()}
     
     return [r[0] for r in sorted(diffdict.items(), key=lambda kv: kv[1])[:3]]
 
 
-def get_nearest(names, mechanics, n=20):
+def get_nearest(names, mechanics, n=100):
+
     # Grab info for given games
     if names:
         input_array = get_test_array(names)
@@ -89,21 +88,29 @@ def get_nearest(names, mechanics, n=20):
             mech_games = filter_mechanics(mechanics)
             weights['avgrating'] = weights.apply(lambda x: x['avgrating']*10 if x['id'] in mech_games else x['avgrating'], axis=1)
         # Sort results by new scaled distance
-        neighborhood['distance']= pd.merge(neighborhood, weights,on='id').apply(lambda x: x['distance']/(x['avgrating']+.01),axis=1)
-        neighborhood.sort_values('distance', inplace=True)
+        neighborhood['distance'] = pd.merge(neighborhood, weights,on='id').apply(lambda x: x['distance']/(x['avgrating']+.01),axis=1)
+        neighborhood['id']=neighborhood['id'].apply(int)
+        neighborhood.sort_values('distance',inplace=True)
+        # neighborhood = neighborhood[~neighborhood['names'].isin(names)].sort_values('distance').head(3)
         # Return results not in the given names
-        return list(filter(lambda g: g['name'] not in names, [game_json[int(game_id)] for game_id in list(neighborhood['id'])]))[:3]
+        results = []
+        for idx in neighborhood['id'].tolist():
+            if game_json[idx]['name'] not in names:
+                results.append(game_json[idx])
+            # print(game_json[idx]['distance'])
+        # results = sorted(list(filter(lambda g: g['bggid'] in neighborhood['id'].tolist() and g['name'] not in names, game_json)), key=lambda g: g['distance'])[:3]
+
+        for r in results:
+            r['bestfeatures'] = featurecloseness(names, r['name'])
     elif mechanics:
         # Filters games based on given mechanics
         mech_games = filter_mechanics(mechanics)
         # Finds top 3 rated games with those mechanics
-        best_mech = processed.query('id == @mech_games').sort_values('avgrating', ascending=False)['id'].head(3).values
+        if mech_games:
+            best_mech = processed.query('id == @mech_games').sort_values('avgrating', ascending=False)['id'].head(3).values
+        else:
+            print('No mech_games')
+            best_mech = processed.sort_values('avgrating',ascending=False)['id'].head(3).values
+        results = sorted(list(filter(lambda g: g['bggid'] in best_mech.tolist(), game_json)), key=lambda g: g['avgrating'], reverse=True)
         
-        results = list(filter(lambda g: g['bggid'] in best_mech, game_json)).sort(key=lambda g: g['avgrating'], reverse=True)
-        
-        for r in results:
-            r['bestfeatures'] = featurecloseness(names, r)
-        
-        return results
-
-
+    return results[:3]
